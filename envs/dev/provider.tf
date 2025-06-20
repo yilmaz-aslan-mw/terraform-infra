@@ -1,5 +1,5 @@
 provider "google" {
   credentials = file("../../terraform-key.json")
-  project     = "yilmaz-test-app-dev-1"
+  project     = "test-app-dev"
   region      = "us-central1"
 }
