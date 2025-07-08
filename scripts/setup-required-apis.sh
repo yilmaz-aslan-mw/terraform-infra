@@ -62,12 +62,14 @@ gcloud config set project "$PROJECT_ID"
 
 # Minimal required APIs
 REQUIRED_APIS=(
-    "compute.googleapis.com"           # Compute Engine
-    "container.googleapis.com"         # Kubernetes Engine
-    "sqladmin.googleapis.com"          # Cloud SQL
-    "servicenetworking.googleapis.com" # Service Networking
+    "compute.googleapis.com"           # Compute Engine API
+    "container.googleapis.com"         # Kubernetes Engine API
+    "sqladmin.googleapis.com"          # Cloud SQL Admin API
+    "servicenetworking.googleapis.com" # Service Networking API
     "iam.googleapis.com"               # IAM
-    "cloudresourcemanager.googleapis.com" # Cloud Resource Manager (required for some Terraform operations)
+    "cloudresourcemanager.googleapis.com" # Cloud Resource Manager API
+    "containerregistry.googleapis.com"    # Google Container Registry API
+    "secretmanager.googleapis.com"        # Secret Manager API
 )
 
 echo -e "${GREEN}🚀 Enabling required APIs...${NC}"

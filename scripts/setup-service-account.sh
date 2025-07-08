@@ -114,11 +114,12 @@ assign_roles() {
     # Required roles for Terraform infrastructure
     ROLES=(
         "roles/cloudsql.admin"                        # Cloud SQL Admin
-        "roles/compute.admin"                    # Compute Engine Admin
-        "roles/container.admin"                  # Kubernetes Engine Admin
-        "roles/iam.serviceAccountUser"           # Service Account User
-        "roles/servicenetworking.networksAdmin"          # Service Networking Admin
-        "roles/storage.objectAdmin"              # GCS Object Admin for Terraform state
+        "roles/compute.admin"                         # Compute Admin
+        "roles/container.admin"                       # Kubernetes Admin
+        "roles/iam.serviceAccountUser"                # Service Account User
+        "roles/iam.serviceAccountAdmin"
+       "roles/servicenetworking.networksAdmin"       # Service Networking Admin
+        "roles/storage.objectAdmin"                   # Storage Admin
     )
     
     for role in "${ROLES[@]}"; do

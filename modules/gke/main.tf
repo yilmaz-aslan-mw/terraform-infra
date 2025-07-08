@@ -1,3 +1,24 @@
+# GKE Service Account
+resource "google_service_account" "gke_service_account" {
+  account_id   = "gke-service-account"
+  display_name = "GKE Service Account - ${var.environment}"
+  project      = var.project_id
+}
+
+# IAM binding for GKE service account to access Secret Manager
+resource "google_project_iam_member" "gke_secretmanager" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.gke_service_account.email}"
+}
+
+# IAM binding for GKE service account to access Cloud Storage
+resource "google_project_iam_member" "gke_storage" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.gke_service_account.email}"
+}
+
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
   location = var.region
@@ -10,6 +31,10 @@ resource "google_container_cluster" "primary" {
   ip_allocation_policy {}
 
   deletion_protection = false
+
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
 }
 
 resource "google_container_node_pool" "lowcost_pool" {
@@ -20,9 +45,13 @@ resource "google_container_node_pool" "lowcost_pool" {
   node_config {
     machine_type = var.machine_type
     preemptible  = var.preemptible
+    service_account = google_service_account.gke_service_account.email
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
   }
 
   initial_node_count = var.initial_node_count

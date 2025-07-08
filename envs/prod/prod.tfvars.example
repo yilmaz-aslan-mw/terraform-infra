@@ -1,0 +1,10 @@
+# Production Environment Variables
+# Copy this file to prod.tfvars and fill in your actual values
+
+db_password = "your-secure-production-db-password"
+
+api_key = "your-production-api-key"
+
+clerk_publishable_key = "pk_live_your-production-clerk-publishable-key"
+
+clerk_secret_key = "sk_live_your-production-clerk-secret-key" 

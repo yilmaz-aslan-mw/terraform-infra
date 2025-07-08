@@ -36,8 +36,9 @@ print_usage() {
     echo -e "  --skip-apis          Skip API enablement"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
-    echo -e "  $0 --project-id vunapay-core-dev --environment dev"
-    echo -e "  $0 --project-id vunapay-core-stage --environment stage --skip-sa"
+    echo -e "  $0 --project-id ya-test-project-1-dev --environment dev"
+    echo -e "  $0 --project-id ya-test-project-1-stage --environment stage"
+    echo -e "  $0 --project-id ya-test-project-1-prod --environment prod"
 }
 
 # Function to validate environment
@@ -260,14 +261,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [[ -z "$PROJECT_ID" ]]; then
-    echo -e "${RED}❌ Project ID is required${NC}"
-    print_usage
-    exit 1
-fi
-
-if [[ -z "$ENVIRONMENT" ]]; then
-    echo -e "${RED}❌ Environment is required${NC}"
+if [[ -z "$PROJECT_ID" ]] || [[ -z "$ENVIRONMENT" ]]; then
+    echo -e "${RED}❌ Project ID and Environment are required${NC}"
     print_usage
     exit 1
 fi
@@ -300,6 +295,57 @@ echo ""
 echo -e "${GREEN}🔧 Setting project as active...${NC}"
 gcloud config set project "$PROJECT_ID"
 echo -e "${GREEN}✅ Project set as active${NC}"
+
+# Create environment-specific tfvars file
+ENV_DIR="envs/$ENVIRONMENT"
+TFVARS_FILE="$ENV_DIR/${ENVIRONMENT}.tfvars"
+SECRETS_FILE="$ENV_DIR/secrets.tfvars"
+
+echo -e "${GREEN}📝 Creating tfvars file: $TFVARS_FILE${NC}"
+mkdir -p "$ENV_DIR"
+
+cat > "$TFVARS_FILE" << EOF
+# ${ENVIRONMENT^} Environment Configuration
+project_id  = "$PROJECT_ID"
+region      = "us-central1"
+environment = "$ENVIRONMENT"
+
+# Infrastructure Configuration
+node_count     = 1
+machine_type   = "e2-small"
+db_tier        = "db-f1-micro"
+
+# Non-sensitive Configuration
+api_base_url = "https://api-${ENVIRONMENT}.example.com"
+log_level    = "debug"
+EOF
+
+echo -e "${GREEN}✅ tfvars file created successfully!${NC}"
+
+# Create secrets template file
+echo -e "${GREEN}📝 Creating secrets template: $SECRETS_FILE${NC}"
+cat > "$SECRETS_FILE" << EOF
+# ${ENVIRONMENT^} Environment Secrets
+# ⚠️  DO NOT COMMIT THIS FILE TO VERSION CONTROL
+# Copy this file and fill in your actual secret values
+
+# Database Secrets
+db_password = "your-${ENVIRONMENT}-db-password"
+
+# API Secrets
+api_key = "your-${ENVIRONMENT}-api-key"
+
+# Authentication Secrets
+clerk_secret_key = "your-${ENVIRONMENT}-clerk-secret-key"
+jwt_secret       = "your-${ENVIRONMENT}-jwt-secret"
+
+# External Service Secrets
+stripe_secret_key = "your-${ENVIRONMENT}-stripe-secret-key"
+redis_password    = "your-${ENVIRONMENT}-redis-password"
+EOF
+
+echo -e "${GREEN}✅ secrets template created successfully!${NC}"
+echo -e "${YELLOW}⚠️  Remember to update $SECRETS_FILE with your actual secret values${NC}"
 
 # Setup service account
 setup_service_account

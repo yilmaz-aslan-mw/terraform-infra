@@ -1,43 +1,52 @@
 variable "cluster_name" {
-  description = "Name of the GKE cluster"
+  description = "The name of the GKE cluster"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "The region where the cluster will be created"
   type        = string
 }
 
 variable "vpc_name" {
-  description = "VPC network name"
+  description = "The name of the VPC network"
   type        = string
 }
 
 variable "subnet_name" {
-  description = "Subnet name"
+  description = "The name of the subnet"
   type        = string
 }
 
 variable "node_pool_name" {
-  description = "Name of the node pool"
+  description = "The name of the node pool"
   type        = string
-  default     = "lowcost-pool"
 }
 
 variable "machine_type" {
-  description = "Machine type for nodes"
+  description = "The machine type for the nodes"
   type        = string
   default     = "e2-small"
 }
 
 variable "preemptible" {
-  description = "Whether nodes are preemptible"
+  description = "Whether to use preemptible nodes"
   type        = bool
   default     = false
 }
 
 variable "initial_node_count" {
-  description = "Initial node count"
+  description = "The initial number of nodes in the pool"
   type        = number
   default     = 1
-} 
+}
+
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+}
+
+variable "environment" {
+  description = "The environment name"
+  type        = string
+}

@@ -85,14 +85,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [[ -z "$ENVIRONMENT" ]]; then
-    echo -e "${RED}❌ Environment is required${NC}"
-    print_usage
-    exit 1
-fi
-
-if [[ -z "$COMMAND" ]]; then
-    echo -e "${RED}❌ Command is required${NC}"
+if [[ -z "$ENVIRONMENT" ]] || [[ -z "$COMMAND" ]]; then
+    echo -e "${RED}❌ Environment and Command are required${NC}"
     print_usage
     exit 1
 fi
@@ -105,8 +99,6 @@ fi
 # Check if credentials file exists
 if [[ ! -f "$CREDENTIALS_FILE" ]]; then
     echo -e "${RED}❌ Credentials file not found: $CREDENTIALS_FILE${NC}"
-    echo -e "${YELLOW}Please run the setup script first:${NC}"
-    echo -e "${YELLOW}  ./scripts/setup.sh --project-id <PROJECT_ID> --environment $ENVIRONMENT${NC}"
     exit 1
 fi
 
@@ -114,24 +106,42 @@ fi
 ENV_DIR="$PROJECT_ROOT/envs/$ENVIRONMENT"
 if [[ ! -d "$ENV_DIR" ]]; then
     echo -e "${RED}❌ Environment directory not found: $ENV_DIR${NC}"
-    echo -e "${YELLOW}Please run the setup script first:${NC}"
-    echo -e "${YELLOW}  ./scripts/setup.sh --project-id <PROJECT_ID> --environment $ENVIRONMENT${NC}"
     exit 1
+fi
+
+# Check if tfvars file exists
+TFVARS_FILE="$ENV_DIR/${ENVIRONMENT}.tfvars"
+if [[ ! -f "$TFVARS_FILE" ]]; then
+    echo -e "${RED}❌ tfvars file not found: $TFVARS_FILE${NC}"
+    exit 1
+fi
+
+# Check if secrets file exists (optional)
+SECRETS_FILE="$ENV_DIR/secrets.tfvars"
+SECRETS_ARG=""
+if [[ -f "$SECRETS_FILE" ]]; then
+    SECRETS_ARG="-var-file=\"secrets.tfvars\""
+    echo -e "${GREEN}✅ Found secrets file: $SECRETS_FILE${NC}"
+else
+    echo -e "${YELLOW}⚠️  No secrets file found: $SECRETS_FILE${NC}"
 fi
 
 echo -e "${GREEN}🚀 Running Terraform $COMMAND for $ENVIRONMENT environment...${NC}"
 echo -e "${BLUE}Environment:${NC} $ENVIRONMENT"
 echo -e "${BLUE}Command:${NC} $COMMAND"
 echo -e "${BLUE}Directory:${NC} $ENV_DIR"
-echo -e "${BLUE}Credentials:${NC} $CREDENTIALS_FILE"
+echo -e "${BLUE}Variables:${NC} $TFVARS_FILE"
 echo ""
 
 # Change to environment directory
 cd "$ENV_DIR"
 
-# Run Terraform command with credentials
-echo -e "${GREEN}🔧 Executing: terraform $COMMAND${NC}"
-GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIALS_FILE" terraform "$COMMAND" "${TERRAFORM_ARGS[@]}"
+# Run Terraform command with both variable files
+echo -e "${GREEN}🔧 Executing: terraform $COMMAND -var-file=\"${ENVIRONMENT}.tfvars\" $SECRETS_ARG${NC}"
+GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIALS_FILE" terraform "$COMMAND" \
+    -var-file="${ENVIRONMENT}.tfvars" \
+    $SECRETS_ARG \
+    "${TERRAFORM_ARGS[@]}"
 
 echo ""
 echo -e "${GREEN}✅ Terraform $COMMAND completed successfully!${NC}" 

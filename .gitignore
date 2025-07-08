@@ -195,3 +195,6 @@ secrets.tfvars
 *.secret.tfvars 
 
 *.env
+
+# Add this line to exclude secrets.tfvars files
+**/secrets.tfvars
