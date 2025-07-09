@@ -1,6 +1,34 @@
 # Production Environment Infrastructure
 # Uses separate GCP project for complete isolation
 
+# GitHub Actions Service Account for CI/CD
+module "github_actions_sa" {
+  source      = "../../modules/iam"
+  account_id  = "github-actions-sa"
+  display_name = "GitHub Actions Service Account"
+  project_id  = "ya-test-project-1-prod"
+  iam_roles   = [
+    "roles/artifactregistry.admin",
+    "roles/artifactregistry.reader",
+    "roles/artifactregistry.writer",
+    "roles/container.developer",
+    "roles/storage.admin"
+  ]
+  create_key  = true
+}
+
+# External Secrets Service Account for Secret Manager access
+module "external_secrets_sa" {
+  source      = "../../modules/iam"
+  account_id  = "external-secrets-sa"
+  display_name = "External Secrets Service Account"
+  project_id  = "ya-test-project-1-prod"
+  iam_roles   = [
+    "roles/secretmanager.secretAccessor"
+  ]
+  create_key  = false
+}
+
 module "network" {
   source                = "../../modules/network"
   network_name          = "prod-vpc-network"
@@ -38,36 +66,17 @@ module "gke" {
   project_id         = "ya-test-project-1-prod"
 }
 
-# External Secrets Service Account for Production
-resource "google_service_account" "external_secrets" {
-  account_id   = "external-secrets-sa"
-  display_name = "External Secrets Operator Service Account - Production"
-  project      = "ya-test-project-1-prod"
-}
-
-# Workload Identity binding for External Secrets Operator
-resource "google_service_account_iam_member" "external_secrets_wi" {
-  service_account_id = google_service_account.external_secrets.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:ya-test-project-1-prod.svc.id.goog[default/external-secrets-sa]"
-}
-
-# Secret Manager access for External Secrets
-resource "google_project_iam_member" "external_secrets_secretmanager" {
-  project = "ya-test-project-1-prod"
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.external_secrets.email}"
-}
-
 # Secrets management using the secrets module
 module "secrets" {
   source = "../../modules/secrets"
   
   project_id = "ya-test-project-1-prod"
   environment = "prod"
+  external_secrets_service_account_email = module.external_secrets_sa.email
   namespace = "default"
   create_namespace = false
   gke_service_account_email = module.gke.service_account_email
+  depends_on = [module.gke, module.external_secrets_sa]
   
   secrets = {
     database_url = {

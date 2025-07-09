@@ -1,9 +1,37 @@
 # Dev Environment Infrastructure
 # Uses modules for reusability and consistency
 
+# GitHub Actions Service Account for CI/CD
+module "github_actions_sa" {
+  source      = "../../modules/iam"
+  account_id  = "github-actions-sa"
+  display_name = "GitHub Actions Service Account"
+  project_id  = var.project_id
+  iam_roles   = [
+    "roles/artifactregistry.admin",
+    "roles/artifactregistry.reader",
+    "roles/artifactregistry.writer",
+    "roles/container.developer",
+    "roles/storage.admin"
+  ]
+  create_key  = true
+}
+
+# External Secrets Service Account for Secret Manager access
+module "external_secrets_sa" {
+  source      = "../../modules/iam"
+  account_id  = "external-secrets-sa"
+  display_name = "External Secrets Service Account"
+  project_id  = var.project_id
+  iam_roles   = [
+    "roles/secretmanager.secretAccessor"
+  ]
+  create_key  = false
+}
+
 module "network" {
   source                = "../../modules/network"
-  network_name          = "${var.environment}-vpc-network"
+  network_name          = "${var.environment}-vpc-network-test"
   subnet_name           = "${var.environment}-subnet"
   subnet_cidr_range     = "10.0.0.0/24"
   region                = var.region
@@ -45,10 +73,11 @@ module "secrets" {
   source = "../../modules/secrets"
   project_id = var.project_id
   environment = var.environment
+  external_secrets_service_account_email = module.external_secrets_sa.email
   namespace = "default"
   gke_service_account_email = module.gke.service_account_email
   create_namespace = false
-  depends_on = [module.gke]
+  depends_on = [module.gke, module.external_secrets_sa]
   
   secrets = {
     database_url = {
