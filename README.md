@@ -9,42 +9,36 @@ Terraform infrastructure for any application on Google Cloud Platform.
 - GCP projects created for each environment and enable billing
   Ex:
   - **Dev**: `test-app-dev`
-  - **Staging**: `test-app-dev`
-  - **Production**: `test-app-dev`
-- Update the `provider.tf` files with the created projectIds
+  - **Production**: `test-app-prod`
+- Update the `terraform.tfcars`file
 
 ## Quick Start
 
-### 1. Setup Environment
+### 1. Setup Service Account for Terraform and enable Apis
 
-```bash
-# Setup dev environment
-./scripts/setup.sh --project-id test-app-dev --environment dev
+- `./scripts/setup-service-account.sh --project-id vunapay-project-dev-1`
+- `./scripts/setup-required-apis.sh --project-id vunapay-project-dev-1`
 
-# Setup staging environment
-./scripts/setup.sh --project-id test-app-stage --environment stage
+### 2. Apply Terraform
 
-# Setup production environment
-./scripts/setup.sh --project-id test-app-prod --environment prod
-```
+- `cd envs/dev && terraform plan && terraform apply`
+- `cd envs/prod && terraform plan && terraform apply`
 
-### 2. Deploy & Destroy Infrastructure
+### 3. Setup the Environmental and Secret variables in Github
 
-```bash
-# Deploy to dev
-./scripts/run-terraform.sh --environment dev --command plan
-./scripts/run-terraform.sh --environment dev --command apply
-```
+After the terraform apply finished, update secret & environment variables in the github repositories
 
-Or to destroy `./scripts/run-terraform.sh --environment dev --command destroy`
+1. Create a key for `github-actions-sa` in GCP and crate or update the content into the `GCP_SA_KEY`in the github repo
+2. Repeat the same things for the `GCP_PROJECT_ID` and `GCP_REGION` Environment variables in the repo
 
-### 3. Access Cluster
+### 4. Setup the Kubernetes Cluster
 
-This command add the cluster config to`.kube/config` file
-`./scripts/utils/update-kubectl-credentials.sh`
-Check cluster status `kubectl get nodes`
+1. Load the cluster crendentials `./scripts/utils/update-kubectl-credentials.sh`
+2. Set up the k8s cluser via `cd vunapay-k8s-deployments && ./scripts/setup.sh`
 
-## Cost Optimization
+### 5. Update the static files
+
+Update the image.repository and other gcp variables accordingly in the `vunapay-k8s-deployments/values/dev/main-application-service.yaml`
 
 ### Manual Control
 
@@ -57,16 +51,6 @@ Check cluster status `kubectl get nodes`
 ```
 
 Check cluster status `kubectl get nodes`
-
-### Automated Scheduling
-
-TODO
-
-## Security
-
-- Service account key: `terraform-key.json` (excluded from git)
-- Shared across all environments
-- Minimal required permissions
 
 ## Requirements
 
@@ -91,7 +75,7 @@ We need the following service accounts to provision the GCP Services in order to
   - `roles/compute.admin`
   - `roles/container.admin`
   - `roles/iam.serviceAccountUser`
-  - `roles/servicenetworking.networksAdmin`
+  - `roles/servicenetworking.networksAdmin` Service Networking Admin
   - `roles/storage.objectAdmin`
 
 ### 3. Compute Engine Default Service Account
@@ -106,3 +90,8 @@ We need the following service accounts to provision the GCP Services in order to
 - Destroy only a module `terraform destroy -target=module.gke`
 - Apply only a module `terraform apply -target=module.gke`
 - Check the tracked resources `terraform state list`
+
+### Destroy the project setup
+
+`   export GOOGLE_APPLICATION_CREDENTIALS="../../terraform-key-${PROJECT_ID}.json"
+   terraform destroy`

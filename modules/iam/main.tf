@@ -12,18 +12,9 @@ resource "google_service_account_key" "this" {
   }
 }
 
-resource "google_project_iam_member" "roles" {
+resource "google_project_iam_binding" "roles" {
   for_each = toset(var.iam_roles)
   project  = var.project_id
   role     = each.value
-  member   = "serviceAccount:${google_service_account.this.email}"
-}
-
-output "email" {
-  value = google_service_account.this.email
-}
-
-output "key_private" {
-  value     = var.create_key ? google_service_account_key.this[0].private_key : null
-  sensitive = true
+  members  = ["serviceAccount:${google_service_account.this.email}"]
 } 

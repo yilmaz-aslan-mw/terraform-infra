@@ -30,7 +30,7 @@ crash.*.log
 *.json
 !package.json
 !package-lock.json
-terraform-key.json
+terraform-key*.json
 gcp-key.json
 service-account-key.json
 kubeconfig

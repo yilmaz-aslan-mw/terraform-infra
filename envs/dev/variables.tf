@@ -8,11 +8,6 @@ variable "region" {
   type        = string
 }
 
-variable "environment" {
-  description = "The environment name (dev, stage, prod)"
-  type        = string
-}
-
 variable "db_password" {
   description = "Database password"
   type        = string

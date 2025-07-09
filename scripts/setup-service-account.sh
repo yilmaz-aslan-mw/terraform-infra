@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 PROJECT_ID=""
 SERVICE_ACCOUNT_NAME="terraform-sa"
 SERVICE_ACCOUNT_DISPLAY_NAME="Terraform Service Account"
-KEY_FILE="terraform-key.json"
+KEY_FILE=""  # Will be auto-generated based on project ID
 
 # Function to print usage
 print_usage() {
@@ -29,12 +29,26 @@ print_usage() {
     echo -e "${BLUE}Optional Arguments:${NC}"
     echo -e "  --service-account    Service account name (default: terraform-sa)"
     echo -e "  --display-name       Service account display name (default: Terraform Service Account)"
-    echo -e "  --key-file          Output key file name (default: terraform-key.json)"
-    echo -e "  --skip-key-creation Skip creating service account key"
+    echo -e "  --key-file          Output key file name (default: auto-generated with project ID)"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo -e "  $0 --project-id my-terraform-project-123"
     echo -e "  $0 --project-id my-terraform-project-123 --service-account my-terraform-sa"
+    echo -e "  $0 --project-id my-terraform-project-123 --key-file custom-key.json"
+}
+
+# Function to generate key file name
+generate_key_file_name() {
+    local project_id="$1"
+    local custom_key_file="$2"
+    
+    if [[ -n "$custom_key_file" ]]; then
+        echo "$custom_key_file"
+    else
+        # Convert project ID to a safe filename
+        local safe_project_id=$(echo "$project_id" | sed 's/[^a-zA-Z0-9._-]/-/g')
+        echo "terraform-key-${safe_project_id}.json"
+    fi
 }
 
 # Function to check if project exists
@@ -113,13 +127,16 @@ assign_roles() {
     
     # Required roles for Terraform infrastructure
     ROLES=(
+        "roles/resourcemanager.projectIamAdmin"        # Project IAM Admin (CRITICAL for Terraform)
+        "roles/iam.serviceAccountAdmin"               # Service Account Admin
+        "roles/iam.serviceAccountUser"                # Service Account User
         "roles/cloudsql.admin"                        # Cloud SQL Admin
         "roles/compute.admin"                         # Compute Admin
         "roles/container.admin"                       # Kubernetes Admin
-        "roles/iam.serviceAccountUser"                # Service Account User
-        "roles/iam.serviceAccountAdmin"
-       "roles/servicenetworking.networksAdmin"       # Service Networking Admin
-        "roles/storage.objectAdmin"                   # Storage Admin
+        "roles/artifactregistry.admin"                # Artifact Registry Admin Create and manage repositories and artifacts.
+        "roles/storage.admin"                         # Storage Admin
+        "roles/servicenetworking.networksAdmin"       # Service Networking Admin
+        "roles/secretmanager.admin"                   # Secret Manager Admin
     )
     
     for role in "${ROLES[@]}"; do
@@ -235,7 +252,7 @@ create_service_account_key() {
 }
 
 # Parse command line arguments
-SKIP_KEY_CREATION=false
+CUSTOM_KEY_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -252,12 +269,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --key-file)
-            KEY_FILE="$2"
+            CUSTOM_KEY_FILE="$2"
             shift 2
-            ;;
-        --skip-key-creation)
-            SKIP_KEY_CREATION=true
-            shift
             ;;
         --help|-h)
             print_usage
@@ -278,6 +291,9 @@ if [[ -z "$PROJECT_ID" ]]; then
     exit 1
 fi
 
+# Generate key file name
+KEY_FILE=$(generate_key_file_name "$PROJECT_ID" "$CUSTOM_KEY_FILE")
+
 # Check if gcloud is installed
 if ! command -v gcloud &> /dev/null; then
     echo -e "${RED}❌ gcloud CLI is not installed. Please install it first.${NC}"
@@ -295,6 +311,7 @@ echo -e "${GREEN}🚀 Starting Service Account Setup...${NC}"
 echo -e "${BLUE}Project ID:${NC} $PROJECT_ID"
 echo -e "${BLUE}Service Account:${NC} $SERVICE_ACCOUNT_NAME"
 echo -e "${BLUE}Display Name:${NC} $SERVICE_ACCOUNT_DISPLAY_NAME"
+echo -e "${BLUE}Key File:${NC} $KEY_FILE"
 
 # Check if project exists
 echo -e "${GREEN}🔍 Checking project...${NC}"
@@ -312,34 +329,8 @@ create_service_account "$PROJECT_ID" "$SERVICE_ACCOUNT_NAME" "$SERVICE_ACCOUNT_D
 # Assign IAM roles
 assign_roles "$PROJECT_ID" "$SERVICE_ACCOUNT_NAME"
 
-# Create service account key if not skipped
-if [[ "$SKIP_KEY_CREATION" == false ]]; then
-    create_service_account_key "$PROJECT_ID" "$SERVICE_ACCOUNT_NAME" "$KEY_FILE"
-else
-    echo -e "${YELLOW}⚠️  Skipping service account key creation${NC}"
-fi
-
-# Create output file with service account details
-OUTPUT_FILE="service-account-setup-$(date +%Y%m%d-%H%M%S).env"
-cat > "$OUTPUT_FILE" << EOF
-# GCP Service Account Setup Details
-# Generated on: $(date)
-PROJECT_ID=$PROJECT_ID
-SERVICE_ACCOUNT_NAME=$SERVICE_ACCOUNT_NAME
-SERVICE_ACCOUNT_EMAIL=$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com
-KEY_FILE=$KEY_FILE
-
-# Export these variables for use in other scripts
-export PROJECT_ID=$PROJECT_ID
-export SERVICE_ACCOUNT_NAME=$SERVICE_ACCOUNT_NAME
-export SERVICE_ACCOUNT_EMAIL=$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com
-export KEY_FILE=$KEY_FILE
-
-# For Terraform authentication, set this environment variable:
-export GOOGLE_APPLICATION_CREDENTIALS="\$(pwd)/$KEY_FILE"
-EOF
-
-echo -e "${GREEN}📄 Service account details saved to: $OUTPUT_FILE${NC}"
+# Create service account key
+create_service_account_key "$PROJECT_ID" "$SERVICE_ACCOUNT_NAME" "$KEY_FILE"
 
 echo ""
 echo -e "${GREEN}🎉 Service Account Setup Complete!${NC}"
@@ -355,8 +346,6 @@ echo -e "${BLUE}📋 Service Account Details:${NC}"
 echo -e "${BLUE}   Project ID:${NC} $PROJECT_ID"
 echo -e "${BLUE}   Service Account:${NC} $SERVICE_ACCOUNT_NAME"
 echo -e "${BLUE}   Email:${NC} $SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
-if [[ "$SKIP_KEY_CREATION" == false ]]; then
-    echo -e "${BLUE}   Key File:${NC} $KEY_FILE"
-fi
+echo -e "${BLUE}   Key File:${NC} $KEY_FILE"
 echo ""
 echo -e "${GREEN}✅ You can now proceed with the next steps!${NC}" 

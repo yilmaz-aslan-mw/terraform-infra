@@ -2,7 +2,6 @@
 
 project_id = "vunapay-project-dev"
 region     = "us-central1"
-environment = "dev"
 
 # Database password (replace with your actual secure password)
 db_password = "mypassword"

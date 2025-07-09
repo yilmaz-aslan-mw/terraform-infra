@@ -1,22 +1,19 @@
 # GKE Service Account
 resource "google_service_account" "gke_service_account" {
   account_id   = "gke-service-account"
-  display_name = "GKE Service Account - ${var.environment}"
+  display_name = "GKE Service Account"
   project      = var.project_id
 }
 
-# IAM binding for GKE service account to access Secret Manager
-resource "google_project_iam_member" "gke_secretmanager" {
+# IAM bindings for GKE service account
+resource "google_project_iam_binding" "gke_roles" {
+  for_each = toset([
+    "roles/secretmanager.secretAccessor",
+    "roles/artifactregistry.reader"
+  ])
   project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.gke_service_account.email}"
-}
-
-# IAM binding for GKE service account to access Cloud Storage
-resource "google_project_iam_member" "gke_storage" {
-  project = var.project_id
-  role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${google_service_account.gke_service_account.email}"
+  role    = each.value
+  members = ["serviceAccount:${google_service_account.gke_service_account.email}"]
 }
 
 resource "google_container_cluster" "primary" {

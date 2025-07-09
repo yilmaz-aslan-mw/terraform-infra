@@ -11,9 +11,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Production protection
-PRODUCTION_PROJECTS=("vunapay-core-prod" "vunapay-prod" "prod" "production")
-
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -23,7 +20,6 @@ show_usage() {
     echo "  -c, --cluster CLUSTER_NAME   GKE Cluster name (auto-detected if not specified)"
     echo "  -r, --region REGION          GCP Region (auto-detected if not specified)"
     echo "  -n, --node-pool POOL_NAME    Node pool name (auto-detected if not specified)"
-    echo "  --force                      Force scaling down production (use with extreme caution!)"
     echo "  -h, --help                   Show this help message"
     echo ""
     echo "Environment Variables:"
@@ -31,16 +27,14 @@ show_usage() {
     echo "  CLUSTER_NAME                 GKE Cluster name"
     echo "  REGION                       GCP Region"
     echo "  NODE_POOL_NAME               Node pool name"
-    echo "  FORCE_SCALE_DOWN             Force scaling down production (use with extreme caution!)"
     echo ""
     echo "Examples:"
     echo "  $0 -p vunapay-core-stage                    # Auto-detect everything"
     echo "  $0 -p vunapay-core-dev                      # Auto-detect everything"
-    echo "  $0 -p vunapay-core-prod --force             # Auto-detect + force production"
+    echo "  $0 -p vunapay-core-prod                     # Auto-detect everything"
     echo "  $0 -p vunapay-core-stage -c custom-cluster  # Override cluster name"
     echo ""
-    echo "⚠️  WARNING: Scaling down production will cause service outages!"
-    echo "   Use --force flag only if you are absolutely certain!"
+    echo "⚠️  WARNING: Scaling down will cause service outages!"
 }
 
 # Function to auto-detect cluster information
@@ -92,65 +86,7 @@ auto_detect_cluster_info() {
     echo "$node_pool_name"
 }
 
-# Function to check if project is production
-is_production_project() {
-    local project_id="$1"
-    for prod_project in "${PRODUCTION_PROJECTS[@]}"; do
-        if [[ "$project_id" == *"$prod_project"* ]] || [[ "$project_id" == "$prod_project" ]]; then
-            return 0  # true - is production
-        fi
-    done
-    return 1  # false - not production
-}
 
-# Function to get production confirmation
-get_production_confirmation() {
-    local project_id="$1"
-    echo ""
-    echo -e "${RED}🚨 DANGER ZONE - PRODUCTION SCALING 🚨${NC}"
-    echo -e "${RED}========================================${NC}"
-    echo -e "${RED}You are about to scale down PRODUCTION cluster!${NC}"
-    echo -e "${RED}Project: $project_id${NC}"
-    echo -e "${RED}Cluster: $CLUSTER_NAME${NC}"
-    echo -e "${RED}Region: $REGION${NC}"
-    echo ""
-    echo -e "${RED}⚠️  This will cause:${NC}"
-    echo -e "${RED}   • Complete service outage${NC}"
-    echo -e "${RED}   • All running applications will stop${NC}"
-    echo -e "${RED}   • Users will not be able to access services${NC}"
-    echo -e "${RED}   • Potential data loss if not properly handled${NC}"
-    echo ""
-    echo -e "${YELLOW}Current time: $(date)${NC}"
-    echo -e "${YELLOW}Current user: $(whoami)@$(hostname)${NC}"
-    echo ""
-    
-    # Require explicit confirmation
-    echo -e "${RED}To proceed, you must type the exact project ID: ${YELLOW}$project_id${NC}"
-    read -p "Type the project ID to confirm: " confirmation
-    
-    if [[ "$confirmation" != "$project_id" ]]; then
-        echo -e "${RED}❌ Confirmation failed. Project ID does not match.${NC}"
-        echo -e "${YELLOW}Aborting production scaling operation.${NC}"
-        exit 1
-    fi
-    
-    # Additional safety check
-    echo ""
-    echo -e "${RED}⚠️  FINAL WARNING: Are you absolutely sure?${NC}"
-    echo -e "${RED}This action cannot be easily undone and will cause immediate service disruption.${NC}"
-    read -p "Type 'YES I UNDERSTAND THE RISKS' to proceed: " final_confirmation
-    
-    if [[ "$final_confirmation" != "YES I UNDERSTAND THE RISKS" ]]; then
-        echo -e "${RED}❌ Final confirmation failed.${NC}"
-        echo -e "${YELLOW}Aborting production scaling operation.${NC}"
-        exit 1
-    fi
-    
-    echo ""
-    echo -e "${YELLOW}⚠️  Proceeding with production scaling...${NC}"
-    echo -e "${YELLOW}This may take several minutes.${NC}"
-    echo ""
-}
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -170,10 +106,6 @@ while [[ $# -gt 0 ]]; do
         -n|--node-pool)
             NODE_POOL_NAME="$2"
             shift 2
-            ;;
-        --force)
-            FORCE_SCALE_DOWN="true"
-            shift
             ;;
         -h|--help)
             show_usage
@@ -238,23 +170,7 @@ if [[ -z "$CLUSTER_NAME" ]] || [[ -z "$REGION" ]] || [[ -z "$NODE_POOL_NAME" ]];
     echo -e "${GREEN}✓ Found node pool: $NODE_POOL_NAME${NC}"
 fi
 
-# Production safety check
-if is_production_project "$PROJECT_ID"; then
-    if [[ "$FORCE_SCALE_DOWN" != "true" ]]; then
-        echo -e "${RED}❌ PRODUCTION PROTECTION ACTIVATED!${NC}"
-        echo -e "${RED}Project '$PROJECT_ID' appears to be a production environment.${NC}"
-        echo ""
-        echo -e "${YELLOW}To scale down production, you must:${NC}"
-        echo -e "${YELLOW}1. Use the --force flag: $0 -p $PROJECT_ID --force${NC}"
-        echo -e "${YELLOW}2. Provide explicit confirmation when prompted${NC}"
-        echo ""
-        echo -e "${YELLOW}⚠️  WARNING: Scaling down production will cause service outages!${NC}"
-        echo -e "${YELLOW}   Only proceed if you are absolutely certain this is necessary.${NC}"
-        exit 1
-    else
-        get_production_confirmation "$PROJECT_ID"
-    fi
-fi
+
 
 echo -e "${GREEN}💰 Scaling down GKE cluster to save costs...${NC}"
 echo -e "${YELLOW}📋 Configuration:${NC}"

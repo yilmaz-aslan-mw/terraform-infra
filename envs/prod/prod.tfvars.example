@@ -1,10 +1,11 @@
 # Production Environment Variables
-# Copy this file to prod.tfvars and fill in your actual values
 
-db_password = "your-secure-production-db-password"
+project_id = "vunapay-project-prod"
+region     = "us-central1"
 
-api_key = "your-production-api-key"
+# Database password (replace with your actual secure password)
+db_password = "mypassword"
 
-clerk_publishable_key = "pk_live_your-production-clerk-publishable-key"
-
-clerk_secret_key = "sk_live_your-production-clerk-secret-key" 
+# Clerk authentication keys (replace with your actual Clerk keys)
+clerk_publishable_key = "pk_test_ZW5vdWdoLWxhbWItNy5jbGVyay5hY2NvdW50cy5kZXYk"
+clerk_secret_key = "sk_test_0v7JUMVACgb9j2YlFnDuWPKOdwY27bDSgMmM2UXriL"

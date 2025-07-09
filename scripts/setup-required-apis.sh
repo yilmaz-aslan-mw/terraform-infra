@@ -70,6 +70,7 @@ REQUIRED_APIS=(
     "cloudresourcemanager.googleapis.com" # Cloud Resource Manager API
     "containerregistry.googleapis.com"    # Google Container Registry API
     "secretmanager.googleapis.com"        # Secret Manager API
+    "artifactregistry.googleapis.com"     # Artifact Registry API
 )
 
 echo -e "${GREEN}🚀 Enabling required APIs...${NC}"
